@@ -27,7 +27,7 @@ def get_model_name(args, fold):
     return model_name
 
 
-def store_model(args, results):
+def store_results(args, results):
     # Creating the results folder if it does not exist
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
@@ -270,22 +270,22 @@ if __name__ == '__main__':
         default=0.2,
         help='Percentage of the data used for the test set'
     )
+    parser.add_argument('--store_results',
+        action='store_true',
+        default=True,
+        help='Whether to store the model weights and metrics'
+    )
     parser.add_argument('--results_path',
         type=str,
         default='results',
         help='Directory for storing execution results'
     )
-    parser.add_argument('--store_model',
-        action='store_true',
-        default=True,
-        help='Whether to store the model weights and metrics'
-    )
 
     args = parser.parse_args(args=None)
     results = run(args)
 
-    if args.store_model:
-        store_model(args, results)
+    if args.store_results:
+        store_results(args, results)
 
     # # Loading a model if it was previously stored
     # if args.stored_model_path:
