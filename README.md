@@ -1,4 +1,4 @@
-# Segmentation Methods Benchmark
+# Seismic Segmentation Methods Benchmark
 
 This project was heavily inspired by the works of *Alaudah et al.* in '**A Machine Learning Benchmark for Facies Classification**'  [[Paper]](https://arxiv.org/abs/1901.07659)[[Code]](https://github.com/yalaudah/facies_classification_benchmark).
 
@@ -14,11 +14,17 @@ pip install -r requirements.txt
 
 ## Downloading the Data
 
-All three of the datasets listed above were compressed in a single `.zip` file, which can be obtained by running the following commands:
+All three of the datasets listed above were compressed in a single `datasets.zip` file. It can be obtained through the `gdown` package by running the following commands:
 
 ```
 pip install gdown
 gdown 163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY
+```
+
+Alternatively, the data can be retrieved using `wget` with the following command:
+
+```
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY" -O datasets.zip && rm -rf /tmp/cookies.txt
 ```
 
 > Note: folder names, as well as file names whithin the folders, should be kept the same after unziping in order for the code to work properly.
