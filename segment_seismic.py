@@ -12,11 +12,10 @@ from core.models import load_empty_model
 from core.metrics import RunningMetrics, EarlyStopper
 
 
-def get_model_name(args, fold):
+def get_model_name(args):
     model_name = ''
 
     model_name += 'data_'    + args.dataset_name + '_'
-    model_name += 'fold_'    + str(fold + 1) + '_'
     model_name += 'arch_'    + args.architecture.upper() + '_'
     model_name += 'loss_'    + args.loss_function.upper() + '_'
     model_name += 'opt_'     + args.optimizer + '_'
@@ -31,15 +30,19 @@ def store_results(args, results):
     # Creating the results folder if it does not exist
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
+    
+    model_name = get_model_name(args)
+    results_dir = os.makedirs(os.path.join(args.results_path), get_model_name(args))
 
     for fold_number in sorted(results.keys()):
         model  = results[fold_number]['model']
         scores = {key: value for key, value in results[fold_number] if key != 'model'}
 
-        model_name = get_model_name(args, fold_number)
-        torch.save(model.state_dict(), os.path.join(args.results_path, model_name + '.pt'))
+        model_name = model_name + f'_fold_{fold_number + 1}'
+
+        torch.save(model.state_dict(), os.path.join(results_dir, model_name + '.pt'))
         
-        with open(os.path.join(args.results_path, model_name + '.json'), 'w') as json_buffer:
+        with open(os.path.join(results_dir, model_name + '.json'), 'w') as json_buffer:
             json.dump(scores, json_buffer, indent=4)
 
 
@@ -174,7 +177,7 @@ def run(args):
                 print(datetime.now().strftime('\n%Y/%m/%d %H:%M:%S'))
                 print(f'Validating on epoch {epoch + 1}/{args.n_epochs}\n')
 
-                for images, labels in tqdm(test_loader):
+                for images, labels in tqdm(test_loader, ascii=' >='):
                     images = images.type(torch.FloatTensor).to(device)
                     labels = labels.type(torch.FloatTensor).to(device)
 
