@@ -12,10 +12,10 @@ from core.models import load_empty_model
 from core.metrics import RunningMetrics, EarlyStopper
 
 
-def get_model_name(args):
+def get_model_name(args, dataset_name):
     model_name = ''
 
-    model_name += 'data_'    + args.dataset_name + '_'
+    model_name += 'data_'    + dataset_name + '_'
     model_name += 'arch_'    + args.architecture.upper() + '_'
     model_name += 'loss_'    + args.loss_function.upper() + '_'
     model_name += 'opt_'     + args.optimizer + '_'
@@ -31,7 +31,7 @@ def store_results(args, results):
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
     
-    model_name = get_model_name(args)
+    model_name = get_model_name(args, results['dataset_name'])
     results_dir = os.makedirs(os.path.join(args.results_path), get_model_name(args))
 
     for fold_number in sorted(results.keys()):
@@ -109,8 +109,8 @@ def run(args):
         print('N. of epochs:   ', args.n_epochs)
 
         print('')
-        print('Number of training examples:', len(train_loader))
-        print('Number of test examples:    ', len(test_loader))
+        print('Number of training examples:', len(train_indices))
+        print('Number of test examples:    ', len(test_indices))
         
         model = load_empty_model(args.architecture, dataset.get_n_classes())
         model = model.to(device)
@@ -203,6 +203,7 @@ def run(args):
                 break
         
         results[fold_number] = {
+            'dataset_name': dataset_name,
             'model'       : model,
             'train_scores': train_scores,
             'test_scores' : test_scores,
