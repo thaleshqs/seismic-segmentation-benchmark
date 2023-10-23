@@ -48,7 +48,7 @@ While ``architecture`` and ``data_path`` are the only required arguments, there 
 |`--loss_function`|Loss function to use. Currently limited to `cel` (Cross Entropy Loss).|`cel`|
 |`--optimizer`|Optimizer to use. Options are `adam` and `sgd` (Stochastic Gradient Descent).|`adam`|
 |`--learning_rate`|Learning rate to use during training.|`0.01`|
-|`--class_weights`|Whether to use class weights in the loss function. The weights are used to assign a higher penalty to misclassifications of minority classes.|`False`|
+|`--weighted_loss`|Whether to use class weights in the loss function. The weights are used to assign a higher penalty to misclassifications of minority classes.|`False`|
 |`--n_epochs`|Number of epochs during training. The actual number might be lower since early stopping is on by default.|`50`|
 |`--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
 |`--test_ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|

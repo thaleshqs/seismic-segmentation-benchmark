@@ -21,7 +21,7 @@ def get_model_name(args, dataset_name):
     model_name += 'opt_'     + args.optimizer + '_'
     model_name += 'batch_'   + str(args.batch_size) + '_'
     model_name += 'epochs_'  + str(args.n_epochs) + '_'
-    model_name += 'weights_' + str(args.class_weights)
+    model_name += 'weights_' + str(args.weighted_loss)
 
     return model_name
 
@@ -32,7 +32,7 @@ def store_results(args, dataset_name, results):
         os.makedirs(args.results_path)
     
     model_name = get_model_name(args, dataset_name)
-    results_dir = os.makedirs(os.path.join(args.results_path), model_name)
+    results_dir = os.makedirs(os.path.join(args.results_path, model_name))
 
     for fold_number in sorted(results.keys()):
         model  = results[fold_number]['model']
@@ -57,23 +57,28 @@ def run(args):
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
+    print('Weighted loss ' + 'ENABLED' if args.weighted_loss else 'DISABLED')
+    print('Loading dataset...\n')
+
+    dataset = SeismicDataset(
+        data_path=args.data_path,
+        orientation=args.orientation,
+        compute_weights=args.weighted_loss
+    )
+
     # Weights are inversely proportional to the frequency of the classes in the training set
-    if args.class_weights:
-        print('Weighted loss ENABLED\n')
+    if args.weighted_loss:
         class_weights = torch.tensor(dataset.get_class_weights(), device=device, requires_grad=False)
     else:
-        print('Weighted loss DISABLED\n') 
         class_weights = None
 
     loss_map = {
-        'cel': ('CrossEntropyLoss', {'reduction': 'sum', 'weight': class_weights})
+        'cel': ('CrossEntropyLoss', {'reduction': 'sum', 'weight': class_weights.float()})
     }
 
     # Defining the loss function
     loss_name, loss_args = loss_map[args.loss_function]
     criterion = getattr(core.loss, loss_name)(**loss_args)
-
-    dataset = SeismicDataset(data_path=args.data_path, orientation=args.orientation)
 
     print(f'Training with {"inlines" if args.orientation == "in" else "crosslines"}')
 
@@ -249,10 +254,10 @@ if __name__ == '__main__':
         default=0.01,
         help='Learning rate'
     )
-    parser.add_argument('--class_weights',
+    parser.add_argument('--weighted_loss',
         action='store_true',
         default=False,
-        help='Whether to use class weights to reduce the effect of class imbalance'
+        help='Whether to use class weights in the loss function'
     )
     parser.add_argument('--n_epochs',
         type=int,

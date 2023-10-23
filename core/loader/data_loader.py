@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 
 class SeismicDataset(Dataset):
 
-    def __init__(self, data_path, orientation):
+    def __init__(self, data_path, orientation, compute_weights=False):
         self.data_path = data_path
         self.dataset_name = os.path.basename(self.data_path)
 
@@ -14,6 +14,11 @@ class SeismicDataset(Dataset):
 
         self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
         self.orientation = orientation
+        self.weights = None
+
+        # If weighted loss is enabled
+        if compute_weights:
+            self.weights = self.compute_class_weights()
 
 
     def __getitem__(self, index):
@@ -33,29 +38,20 @@ class SeismicDataset(Dataset):
 
     def __len__(self):
         return self.n_inlines if self.orientation == 'in' else self.n_crosslines
+    
 
+    def compute_class_weights(self):
+        total_n_values = self.n_inlines*self.n_crosslines*self.n_time_slices
+
+        _, counts = np.unique(self.labels, return_counts=True)
+        counts = 1 - (counts/total_n_values)
+
+        return counts
+    
 
     def get_class_weights(self):
-        # INCOMPLETO!!!
-        class_weights_dict = {
-            'F3_alaudah'        : [0.7151, 0.8811, 0.5156, 0.9346, 0.9683, 0.9852],
-            'F3_conoco_phillips': [],
-            'F3_silva':           [],
-            'parihaka':           [],
-            'penobscot':          []
-        }
-
-        return class_weights_dict[self.dataset_name]
+        return self.weights
     
 
     def get_n_classes(self):
-        # INCOMPLETO!!!
-        n_classes_dict = {
-            'F3_alaudah'        : 6,
-            'F3_conoco_phillips': None,
-            'F3_silva':           None,
-            'parihaka':           None,
-            'penobscot':          None
-        }
-
-        return n_classes_dict[self.dataset_name]
+        return len(self.weights)
