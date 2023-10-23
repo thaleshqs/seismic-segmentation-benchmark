@@ -26,13 +26,13 @@ def get_model_name(args, dataset_name):
     return model_name
 
 
-def store_results(args, results):
+def store_results(args, dataset_name, results):
     # Creating the results folder if it does not exist
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
     
-    model_name = get_model_name(args, results['dataset_name'])
-    results_dir = os.makedirs(os.path.join(args.results_path), get_model_name(args))
+    model_name = get_model_name(args, dataset_name)
+    results_dir = os.makedirs(os.path.join(args.results_path), model_name)
 
     for fold_number in sorted(results.keys()):
         model  = results[fold_number]['model']
@@ -49,11 +49,8 @@ def store_results(args, results):
 def run(args):
     if not os.path.isdir(args.data_path):
         raise FileNotFoundError(f'Folder {args.data_path} does not exist.')
-
-    dataset_name = os.path.basename(args.data_path).rsplit('.')[0]
     
     print('')
-    print('Dataset:      ', dataset_name)
     print('Data path:    ', args.data_path)
     print('Results path: ', args.results_path)
     print('')
@@ -203,7 +200,6 @@ def run(args):
                 break
         
         results[fold_number] = {
-            'dataset_name': dataset_name,
             'model'       : model,
             'train_scores': train_scores,
             'test_scores' : test_scores,
@@ -288,8 +284,10 @@ if __name__ == '__main__':
     args = parser.parse_args(args=None)
     results = run(args)
 
+    dataset_name = os.path.basename(args.data_path).rsplit('.')[0]
+
     if args.store_results:
-        store_results(args, results)
+        store_results(args, dataset_name, results)
 
     # # Loading a model if it was previously stored
     # if args.stored_model_path:
