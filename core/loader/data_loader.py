@@ -14,6 +14,7 @@ class SeismicDataset(Dataset):
 
         self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
         self.orientation = orientation
+        self.n_classes = len(np.unique(self.labels))
         self.weights = None
 
         # If weighted loss is enabled
@@ -42,11 +43,9 @@ class SeismicDataset(Dataset):
 
     def compute_class_weights(self):
         total_n_values = self.n_inlines*self.n_crosslines*self.n_time_slices
-
         _, counts = np.unique(self.labels, return_counts=True)
-        counts = 1 - (counts/total_n_values)
-
-        return counts
+        
+        return total_n_values / (counts*self.n_classes)
     
 
     def get_class_weights(self):
@@ -54,4 +53,4 @@ class SeismicDataset(Dataset):
     
 
     def get_n_classes(self):
-        return len(self.weights)
+        return self.n_classes
