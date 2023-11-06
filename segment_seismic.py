@@ -251,12 +251,12 @@ if __name__ == '__main__':
         help='Architecture to use [segnet, unet, deconvnet]',
         choices=['segnet', 'unet', 'deconvnet']
     )
-    parser.add_argument('-dp', '--data-path',
+    parser.add_argument('-p', '--data-path',
         dest='data_path',
         type=str,
         help='Path to the folder containing the dataset and its labels in .npy format'
     )
-    parser.add_argument('-bs', '--batch-size',
+    parser.add_argument('-b', '--batch-size',
         dest='batch_size',
         type=int,
         default=16,
@@ -268,39 +268,39 @@ if __name__ == '__main__':
         default='cuda:0',
         help='Device to train on [cuda:n]'
     )
-    parser.add_argument('-cv', '--cross-validation',
+    parser.add_argument('-v', '--cross-validation',
         dest='cross_validation',
         action='store_true',
         default=False,
         help='Whether to use 5-fold cross validation'
     )
-    parser.add_argument('-l', '--loss-function',
+    parser.add_argument('-L', '--loss-function',
         dest='loss_function',
         type=str,
         default='cel',
         help='Loss function to use [cel (Cross_Entropy Loss)]',
         choices=['cel']
     )
-    parser.add_argument('-op', '--optimizer',
+    parser.add_argument('-o', '--optimizer',
         dest='optimizer',
         type=str,
         default='adam',
         help='Optimizer to use [adam, sgd (Stochastic Gradient Descent)]',
         choices=['adam', 'sgd']
     )
-    parser.add_argument('-lr', '--learning-rate',
+    parser.add_argument('-l', '--learning-rate',
         dest='learning_rate',
         type=float,
         default=1e-4,
         help='Learning rate'
     )
-    parser.add_argument('-wd', '--weight-decay',
+    parser.add_argument('-w', '--weight-decay',
         dest='weight_decay',
         type=float,
         default=1e-5,
         help='L2 regularization. Value 0 indicates no weight decay'
     )
-    parser.add_argument('-wl', '--weighted-loss',
+    parser.add_argument('-W', '--weighted-loss',
         dest='weighted_loss',
         action='store_true',
         default=False,
@@ -312,14 +312,14 @@ if __name__ == '__main__':
         default=50,
         help='Number of epochs'
     )
-    parser.add_argument('-o', '--orientation',
+    parser.add_argument('-O', '--orientation',
         dest='orientation',
         type=str,
         default='in',
         help='Whether the model should be trained using inlines or crosslines',
         choices=['in', 'cross']
     )
-    parser.add_argument('-r', '--test-ratio',
+    parser.add_argument('-t', '--test-ratio',
         dest='test_ratio',
         type=float,
         default=0.2,
@@ -331,7 +331,7 @@ if __name__ == '__main__':
         default=True,
         help='Whether to store the model weights and metrics'
     )
-    parser.add_argument('-rp', '--results-path',
+    parser.add_argument('-r', '--results-path',
         dest='results_path',
         type=str,
         default=os.path.join(os.getcwd(), 'results'),

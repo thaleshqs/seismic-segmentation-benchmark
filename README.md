@@ -34,7 +34,7 @@ wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download
 To train a model, simply run a command like the example:
 
 ```
-python3 segment_seismic.py -a unet -d path/to/F3_alaudah
+python3 segment_seismic.py -a unet -p path/to/F3_alaudah
 ```
 
 While ``architecture`` and ``data_path`` are the only required arguments, there are also several optional arguments to specify hyperparameters. The complete list of arguments, as well as their descriptions and default values, is given below:
@@ -55,5 +55,5 @@ While ``architecture`` and ``data_path`` are the only required arguments, there 
 |`-O`, `--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
 |`-t`, `--test_ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|
 |`-s`, `--store_results`|Whether to store training results. This generates a `.pt` file containing the model weights and a `.json` file containing metrics (i. e. class accuracy, mIoU).|`True`|
-|`-P`, `--results_path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|
+|`-r`, `--results_path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|
 
