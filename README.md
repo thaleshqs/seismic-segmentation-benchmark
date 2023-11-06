@@ -34,7 +34,7 @@ wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download
 To train a model, simply run a command like the example:
 
 ```
-python3 segment_seismic.py --architecture unet --data_path path/to/F3_alaudah
+python3 segment_seismic.py -a unet -d path/to/F3_alaudah
 ```
 
 While ``architecture`` and ``data_path`` are the only required arguments, there are also several optional arguments to specify hyperparameters. The complete list of arguments, as well as their descriptions and default values, is given below:
@@ -42,18 +42,18 @@ While ``architecture`` and ``data_path`` are the only required arguments, there 
 |Argument|Description|Default|
 |-|-|-|
 |`-a`, `--architecture`|Choose a model to train with. Options are `segnet`, `unet` and `deconvnet`.||
-|`-dp`, `--data_path`|Path to the folder containing one of the datasets with its respective labels in `.npy` format.||
-|`-bs`, `--batch_size`|Size of the training batch.|`16`|
+|`-p`, `--data_path`|Path to the folder containing one of the datasets with its respective labels in `.npy` format.||
+|`-b`, `--batch_size`|Size of the training batch.|`16`|
 |`-d`, `--device`|Choose on which GPU to train on. Defaults to the CPU if the device isn't available.|`cuda:0`|
-|`-cv`, `--cross_validation`|Whether to train the model using 5-Fold Cross Validation.|`False`|
-|`-l`, `--loss_function`|Loss function to use. Currently limited to `cel` (Cross Entropy Loss).|`cel`|
-|`-op`, `--optimizer`|Optimizer to use. Options are `adam` and `sgd` (Stochastic Gradient Descent).|`adam`|
-|`-lr`, `--learning_rate`|Learning rate to use during training.|`1e-4`|
-|`-wd`, `--weight_decay`|Whether to use weight decay (L2 regularization) in the optimizer to prevent overfitting. A value of `0` indicates no decay.|`1e-5`|
-|`-wl`, `--weighted_loss`|Whether to use class weights in the loss function. The weights are used to assign a higher penalty to misclassifications of minority classes.|`False`|
+|`-v`, `--cross_validation`|Whether to train the model using 5-Fold Cross Validation.|`False`|
+|`-L`, `--loss_function`|Loss function to use. Currently limited to `cel` (Cross Entropy Loss).|`cel`|
+|`-o`, `--optimizer`|Optimizer to use. Options are `adam` and `sgd` (Stochastic Gradient Descent).|`adam`|
+|`-l`, `--learning_rate`|Learning rate to use during training.|`1e-4`|
+|`-w`, `--weight_decay`|Whether to use weight decay (L2 regularization) in the optimizer to prevent overfitting. A value of `0` indicates no decay.|`1e-5`|
+|`-W`, `--weighted_loss`|Whether to use class weights in the loss function. The weights are used to assign a higher penalty to misclassifications of minority classes.|`False`|
 |`-e`, `--n_epochs`|Number of epochs during training. The actual number might be lower since early stopping is on by default.|`50`|
-|`-o`, `--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
-|`-r`, `--test_ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|
+|`-O`, `--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
+|`-t`, `--test_ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|
 |`-s`, `--store_results`|Whether to store training results. This generates a `.pt` file containing the model weights and a `.json` file containing metrics (i. e. class accuracy, mIoU).|`True`|
-|`-rp`, `--results_path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|
+|`-P`, `--results_path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|
 
