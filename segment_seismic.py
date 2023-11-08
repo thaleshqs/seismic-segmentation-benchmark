@@ -15,15 +15,14 @@ from core.metrics import RunningMetrics, EarlyStopper
 def train_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
     if args.cross_validation:
         kf = KFold(n_splits=5, shuffle=False)
-
-        return list(kf.split(dataset))
+        splits = [
+            (train_idx.tolist(), test_idx.tolist()) for train_idx, test_idx in kf.split(dataset)
+        ]
     else:
-        test_size  = int(len(dataset)*args.test_ratio)
+        test_size  = int(len(dataset) * args.test_ratio)
+        splits = [(list(range(test_size, len(dataset))), list(range(0, test_size)))]
 
-        return [(
-            list(range(test_size, len(dataset))),
-            list(range(0, test_size))
-        )]
+    return splits
 
 
 def get_model_name(args: ArgumentParser, dataset_name: str) -> str:
@@ -61,6 +60,8 @@ def store_results(args: ArgumentParser, dataset_name: str, results: dict) -> Non
         
         with open(os.path.join(results_dir, f'scores_fold_{fold_number + 1}.json'), 'w') as json_buffer:
             json.dump(scores, json_buffer, indent=4)
+    
+    print(f'\nModel and scores saved in {args.results_path}')
 
 
 def run(args: ArgumentParser) -> dict:
