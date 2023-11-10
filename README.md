@@ -14,17 +14,17 @@ pip install -r requirements.txt
 
 ## Downloading the Data
 
-All three of the datasets listed above were compressed in a single `datasets.zip` file. It can be obtained through the `gdown` package by running the following commands:
+All three of the datasets listed above were preprocessed and compressed into a single `datasets.tar.xz` file. It can be obtained through the `gdown` package by running the following commands:
 
 ```
 pip install gdown
-gdown 163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY
+gdown 1KtUr3dbcf_BBWKDkRWTil8f89CaW8e9W
 ```
 
-Alternatively, the data can be retrieved using `wget` with the following command:
+To use the data, move the `.tar.xz` file to the desired folder and extract it by running the following command:
 
 ```
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=163g5dKYmrDLHVrp84h-6_7hDpVRQ8zMY" -O datasets.zip && rm -rf /tmp/cookies.txt
+tar -xJf datasets.tar.xz
 ```
 
 > Note: folder names, as well as file names whithin the folders, should be kept the same after unziping in order for the code to work properly.
@@ -51,8 +51,9 @@ While ``architecture`` and ``data_path`` are the only required arguments, there 
 |`-l`, `--learning-rate`|Learning rate to use during training.|`1e-4`|
 |`-w`, `--weight-decay`|Whether to use weight decay (L2 regularization) in the optimizer to prevent overfitting. A value of `0` indicates no decay.|`1e-5`|
 |`-W`, `--weighted-loss`|Whether to use class weights in the loss function. The weights are used to assign a higher penalty to misclassifications of minority classes.|`False`|
-|`-e`, `--n-epochs`|Number of epochs during training. The actual number might be lower since early stopping is on by default.|`50`|
+|`-e`, `--n-epochs`|Number of epochs during training. The actual number might be lower since early stopping is on by default.|`20`|
 |`-O`, `--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
+|`-f`, `--remove-faulty-slices`|Whether to remove slices with artifacts from the data. A list of faulty slices, stored as `faulty_slices.json` on each dataset's folder, was previously selected during the data preprocess stage and can be freely modified.|`True`|
 |`-t`, `--test-ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|
 |`-s`, `--store-results`|Whether to store training results. This generates a `.pt` file containing the model weights and a `.json` file containing metrics (i. e. class accuracy, mIoU).|`True`|
 |`-r`, `--results-path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|

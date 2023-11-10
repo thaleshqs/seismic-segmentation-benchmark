@@ -25,40 +25,29 @@ def train_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
     return splits
 
 
-def get_model_name(args: ArgumentParser, dataset_name: str) -> str:
-    model_name = ''
-
-    model_name += 'data_'    + dataset_name + '_'
-    model_name += 'arch_'    + args.architecture.upper() + '_'
-    model_name += 'ori_'     + args.orientation.upper() + '_'
-    model_name += 'loss_'    + args.loss_function.upper() + '_'
-    model_name += 'opt_'     + args.optimizer + '_'
-    model_name += 'batch_'   + str(args.batch_size) + '_'
-    model_name += 'epochs_'  + str(args.n_epochs) + '_'
-    model_name += 'weights_' + str(args.weighted_loss) + '_'
-    model_name += 'cross_'   + str(args.cross_validation) + '_'
-    model_name += datetime.now().isoformat('#')
-
-    return model_name
-
-
-def store_results(args: ArgumentParser, dataset_name: str, results: dict) -> None:
+def store_results(args: ArgumentParser, results: dict) -> None:
     # Creating the results folder if it does not exist
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
-    
-    model_name = get_model_name(args, dataset_name)
 
-    results_dir = os.path.join(args.results_path, model_name)
-    os.makedirs(results_dir)
+    results_folder = os.path.join(args.results_path, datetime.now().isoformat('#'))
+    os.makedirs(results_folder)
+
+    # Storing metadata
+    with open(os.path.join(results_folder, f'metadata.json'), 'w') as json_buffer:
+        json.dump(vars(args), json_buffer, indent=4)
 
     for fold_number in sorted(results.keys()):
+        suffix = f'_fold_{fold_number + 1}' if args.cross_validation else ''
+
         model  = results[fold_number]['model']
         scores = {key: value for key, value in results[fold_number].items() if key != 'model'}
 
-        torch.save(model.state_dict(), os.path.join(results_dir, f'model_fold_{fold_number + 1}.pt'))
-        
-        with open(os.path.join(results_dir, f'scores_fold_{fold_number + 1}.json'), 'w') as json_buffer:
+        # Storing model weights
+        torch.save(model.state_dict(), os.path.join(results_folder, 'model' + suffix + '.pt'))
+
+        # Storing metric scores
+        with open(os.path.join(results_folder, 'scores' + suffix + '.json'), 'w') as json_buffer:
             json.dump(scores, json_buffer, indent=4)
     
     print(f'\nModel and scores saved in {args.results_path}')
@@ -87,7 +76,6 @@ def run(args: ArgumentParser) -> dict:
         compute_weights=args.weighted_loss
     )
 
-    # Weights are inversely proportional to the frequency of the classes in the training set
     if args.weighted_loss:
         class_weights = torch.tensor(dataset.get_class_weights(), device=device, requires_grad=False)
         class_weights = class_weights.float()
@@ -102,7 +90,7 @@ def run(args: ArgumentParser) -> dict:
     loss_name, loss_args = loss_map[args.loss_function]
     criterion = getattr(core.loss, loss_name)(**loss_args)
 
-    print(f'Training with {"inlines" if args.orientation == "in" else "crosslines"}')
+    print(f'Training with {"INLINES" if args.orientation == "in" else "CROSSLINES"}')
 
     # Splitting the data into train and test
     splits  = train_test_split(args, dataset)
@@ -310,7 +298,7 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--n-epochs',
         dest='n_epochs',
         type=int,
-        default=50,
+        default=20,
         help='Number of epochs'
     )
     parser.add_argument('-O', '--orientation',
@@ -319,6 +307,12 @@ if __name__ == '__main__':
         default='in',
         help='Whether the model should be trained using inlines or crosslines',
         choices=['in', 'cross']
+    )
+    parser.add_argument('-f', '--remove-faulty-slices',
+        dest='remove_faulty_slices',
+        action='store_true',
+        default=True,
+        help='Whether to remove slices with artifacts'
     )
     parser.add_argument('-t', '--test-ratio',
         dest='test_ratio',
@@ -342,10 +336,8 @@ if __name__ == '__main__':
     args = parser.parse_args(args=None)
     results = run(args)
 
-    dataset_name = os.path.basename(args.data_path).rsplit('.')[0]
-
     if args.store_results:
-        store_results(args, dataset_name, results)
+        store_results(args, results)
 
     # # Loading a model if it was previously stored
     # if args.stored_model_path:
