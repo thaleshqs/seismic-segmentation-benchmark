@@ -16,11 +16,11 @@ class SeismicDataset(Dataset):
 
         if remove_faulty_slices:
             self.__remove_faulty_slices()
-
-        self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
-        self.n_classes = np.max(self.labels + 1)
+        
+        self.n_classes = self.__process_class_labels()
 
         self.orientation = orientation
+        self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
         self.weights = self.__compute_class_weights() if compute_weights else None
 
 
@@ -48,10 +48,7 @@ class SeismicDataset(Dataset):
         # Weights are inversely proportional to the frequency of the classes in the training set
         _, counts = np.unique(self.labels, return_counts=True)
         
-        if counts == 0:
-            return 0
-        else:
-            return total_n_values / (counts*self.n_classes)
+        return total_n_values / (counts*self.n_classes)
     
 
     def __remove_faulty_slices(self):
@@ -68,19 +65,22 @@ class SeismicDataset(Dataset):
                 self.labels = np.delete(self.labels, obj=faulty_slices['crosslines'], axis=1)
                 self.labels = np.delete(self.labels, obj=faulty_slices['time_slices'], axis=2)
 
-                # Some classes might disappear when removing entire sections from the dataset.
-                # Since labels must be kept in the range [0, number_of_classes), we ajust their values.
-                label_values = np.unique(self.labels)
-                new_labels_dict = {label_values[i]: i for i in range(len(label_values))}
-
-                for key, value in zip(new_labels_dict.keys(), new_labels_dict.values()):
-                    self.labels[self.labels == key] = value
-
         except FileNotFoundError:
             print('"Remove faulty slices" is on, but no file with the indices was found.')
             print('Training with the whole volume instead.\n')
 
             pass
+    
+
+    def __process_class_labels(self):
+        # Labels must be in the range [0, number_of_classes) for the loss function to work properly
+        label_values = np.unique(self.labels)
+        new_labels_dict = {label_values[i]: i for i in range(len(label_values))}
+
+        for key, value in zip(new_labels_dict.keys(), new_labels_dict.values()):
+            self.labels[self.labels == key] = value
+        
+        return len(label_values)
     
 
     def get_class_weights(self):
