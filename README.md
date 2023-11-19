@@ -54,6 +54,6 @@ While ``architecture`` and ``data_path`` are the only required arguments, there 
 |`-e`, `--n-epochs`|Number of epochs during training. The actual number might be lower since early stopping is on by default.|`20`|
 |`-O`, `--orientation`|Choose an orientation for slices of the seismic cube to be sampled. Options are `in` for inlines and `cross` for crosslines.|`in`|
 |`-f`, `--remove-faulty-slices`|Whether to remove slices with artifacts from the data. A list of faulty slices, stored as `faulty_slices.json` on each dataset's folder, was previously selected during the data preprocess stage and can be freely modified.|`True`|
-|`-t`, `--test-ratio`|Percentage (from 0 to 1) of the data used for testing the model. The test set is currently being used for validation in a 5-fold cross validation.|`0.2`|
+|`-F`, `--few-shot`|Whether to swap the train and test sets to train the model using less data.|`False`|
 |`-s`, `--store-results`|Whether to store training results. This generates a `.pt` file containing the model weights and a `.json` file containing metrics (i. e. class accuracy, mIoU).|`True`|
 |`-r`, `--results-path`|Directory for storing training results (if `store_results` is set to `True`).|`results`|

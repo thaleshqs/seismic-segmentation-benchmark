@@ -15,11 +15,26 @@ from core.metrics import RunningMetrics, EarlyStopper
 def train_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
     if args.cross_validation:
         kf = KFold(n_splits=5, shuffle=False)
-        splits = [
-            (train_idx.tolist(), test_idx.tolist()) for train_idx, test_idx in kf.split(dataset)
-        ]
+
+        if args.few_shot:
+            # 20% train / 80% test
+            splits = [
+                (test_idx.tolist(), train_idx.tolist()) for train_idx, test_idx in kf.split(dataset)
+            ]
+        else:
+            # 80% train / 20% test
+            splits = [
+                (train_idx.tolist(), test_idx.tolist()) for train_idx, test_idx in kf.split(dataset)
+            ]
     else:
-        test_size  = int(len(dataset) * args.test_ratio)
+        if args.few_shot:
+            # 20% train / 80% test
+            test_ratio = 0.8
+        else:
+            # 80% train / 20% test
+            test_ratio = 0.2
+
+        test_size  = int(len(dataset) * test_ratio)
         splits = [(list(range(test_size, len(dataset))), list(range(0, test_size)))]
 
     return splits
@@ -156,7 +171,7 @@ def run(args: ArgumentParser) -> dict:
             train_loss = 0
 
             print(datetime.now().strftime('\n%Y/%m/%d %H:%M:%S'))
-            print(f'Training on epoch {epoch + 1}/{args.n_epochs}\n')
+            print(f'[FOLD {fold_number + 1}] Training on epoch {epoch + 1}/{args.n_epochs}\n')
 
             for images, labels in tqdm(train_loader, ascii=' >='):
                 optimizer.zero_grad()
@@ -314,11 +329,11 @@ if __name__ == '__main__':
         default=True,
         help='Whether to remove slices with artifacts'
     )
-    parser.add_argument('-t', '--test-ratio',
-        dest='test_ratio',
-        type=float,
-        default=0.2,
-        help='Percentage of the data used for the test set'
+    parser.add_argument('-F', '--few-shot',
+        dest='few_shot',
+        action='store_true',
+        default=False,
+        help='Whether to swap the train and test sets to train on less data'
     )
     parser.add_argument('-s', '--store-results',
         dest='store_results',

@@ -111,9 +111,8 @@ class RunningMetrics(object):
 
         hist = self.confusion_matrix
 
-        pixel_accuracy = torch.diag(hist).sum() / hist.sum()
-
-        class_accuracy = torch.diag(hist) / hist.sum(dim=1)
+        pixel_accuracy = torch.nan_to_num(torch.diag(hist).sum() / hist.sum(), nan=0.0)
+        class_accuracy = torch.nan_to_num(torch.diag(hist) / hist.sum(dim=1), nan=0.0)
         mean_class_accuracy = torch.nanmean(class_accuracy)
 
         iou = torch.diag(hist) / (hist.sum(dim=1) + hist.sum(dim=0) - torch.diag(hist))
@@ -131,7 +130,7 @@ class RunningMetrics(object):
             'mean_iou'              : mean_iou.item(),
             'frequency_weighted_iou': frequency_weighted_iou.item(),
             'confusion_matrix'      : self.confusion_matrix.tolist(),
-            'BF1 Score'             : bf1_matrix.item()
+            'bf1_score'             : bf1_matrix.item()
         }
     
 
