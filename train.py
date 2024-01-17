@@ -51,6 +51,13 @@ def store_results(args: ArgumentParser, results: dict) -> None:
     # Storing metadata
     with open(os.path.join(results_folder, f'metadata.json'), 'w') as json_buffer:
         json.dump(vars(args), json_buffer, indent=4)
+    
+#     with open(os.path.join(results_folder, 'metadata.json'), 'w') as json_buffer:
+#         d = vars(args)
+#         d = {'test_ratio' if key == 'few_shot' else key: value for key, value in d.items()}
+#         d['test_ratio'] = 0.8
+        
+#         json.dump(d, json_buffer, indent=4)
 
     for fold_number in sorted(results.keys()):
         suffix = f'_fold_{fold_number + 1}' if args.cross_validation else ''
@@ -353,17 +360,3 @@ if __name__ == '__main__':
 
     if args.store_results:
         store_results(args, results)
-
-    # # Loading a model if it was previously stored
-    # if args.stored_model_path:
-    #     if os.path.isfile(args.stored_model_path):
-    #         print(f'Loading stored model {args.stored_model_path}')
-
-    #         model = load_empty_model(args.architecture, 1, dataset.n_classes)
-    #         model.load_state_dict(torch.load(args.stored_model_path))
-    #     else:
-    #         raise FileNotFoundError(f'No such file or directory for stored model: {args.stored_model_path}')
-    # else:
-    #     model = train(train_set, device=device, criterion=criterion, args=args)
-
-    # test(test_set, model=model, device=device, criterion=criterion, args=args)
