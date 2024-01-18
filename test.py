@@ -1,26 +1,26 @@
 import os
 import torch
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from datetime import datetime
 from tqdm import tqdm
 from math import ceil
 from PIL import Image
+from sklearn.model_selection import KFold
+from torchvision.transforms import ToPILImage
 
 import core
 from core.loader.data_loader import *
 from core.models import load_empty_model
 
 
-def generate_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
-    if args.first_slice < 0 or args.first_slice > len(dataset) - 1:
-        raise IndexError(f'Index {args.first_slice} out of bounds for dataset of size {len(dataset)}')
-    elif args.last_slice < 0 or args.last_slice > len(dataset) - 1:
-        raise IndexError(f'Index {args.last_slice} out of bounds for dataset of size {len(dataset)}')
-    else:
-        return list(range(args.first_slice, args.last_slice + 1))
+def train_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
+    kf = KFold(n_splits=5, shuffle=False)
+    
+    return [(train_idx.tolist(), test_idx.tolist()) for train_idx, test_idx in kf.split(dataset)]
 
 
-def save_image(output: torch.tensor, slice_idx: int, outputs_path: str) -> None:
+def tensor_to_image(output: torch.tensor) -> Image:
     # Viridis color palette
     color_map = np.array([
         (253, 231, 37),
@@ -35,46 +35,52 @@ def save_image(output: torch.tensor, slice_idx: int, outputs_path: str) -> None:
         (68, 1, 84)
     ], dtype=np.uint8)
 
-    _, height, width = output.shape
+    n_channels, height, width = output.shape
 
-    # Finding the class with the highest probability for each pixel
-    class_indices = np.argmax(output, axis=0)
+    if n_channels < 3:
+        output = output.numpy().astype(np.uint8)
+    else:
+        # Finding the class with the highest probability for each pixel
+        output = np.argmax(output, axis=0)
 
     # Mapping the class indices to colors
-    image = color_map[class_indices]
+    image = color_map[output]
     image = image.reshape((height, width, 3))
 
     image = Image.fromarray(image)
     image = image.rotate(270, expand=True)
 
-    file_path = os.path.join(outputs_path, f'pred_{slice_idx}.png')
-    image.save(file_path)
+    return image
 
 
-def store_outputs(args: ArgumentParser, outputs: list) -> None:
+def save_images(args: ArgumentParser, outputs: list) -> None:
     # Creating the outputs folder if it does not exist
     if not os.path.exists(args.outputs_path):
         os.makedirs(args.outputs_path)
     
     results_folder = os.path.join(args.outputs_path, datetime.now().isoformat('#'))
+
     os.makedirs(results_folder)
+    os.makedirs(os.path.join(results_folder, 'preds'))
+    os.makedirs(os.path.join(results_folder, 'labels'))
 
     # Storing metadata
     with open(os.path.join(results_folder, f'metadata.json'), 'w') as json_buffer:
         json.dump(vars(args), json_buffer, indent=4)
     
     print('\nGenerating images from predictions...')
-    idx = args.first_slice
 
-    for batch in outputs:
-        for image in batch:
-            save_image(image.cpu(), slice_idx=idx, outputs_path=results_folder)
-            idx += 1
-    
+    for idx, (pred, label) in outputs.items():
+        pred = tensor_to_image(pred.cpu())
+        label = tensor_to_image(label.cpu())
+
+        pred.save(os.path.join(results_folder, f'preds/pred_{idx}.png'))
+        label.save(os.path.join(results_folder, f'labels/label_{idx}.png'))
+
     print(f'\nModel outputs saved as images in {results_folder}')
 
 
-def run(args: ArgumentParser) -> list:
+def run(args: ArgumentParser) -> dict:
     if args.data_path.endswith('/'):
         args.data_path = args.data_path[:-1]
     
@@ -117,7 +123,7 @@ def run(args: ArgumentParser) -> list:
     print(f'Testing with {"INLINES" if args.orientation == "in" else "CROSSLINES"}')
 
     # Retrieving only a subset of slices for testing
-    test_indices = generate_test_split(args, dataset)
+    _, test_indices = train_test_split(args, dataset)[args.fold_number - 1]
 
     test_loader = torch.utils.data.DataLoader(
         dataset=dataset,
@@ -132,7 +138,7 @@ def run(args: ArgumentParser) -> list:
     print('Batch size:     ', args.batch_size)
 
     print('')
-    print(f'Number of test examples: {len(test_indices)} (from range {args.first_slice} to {args.last_slice})')
+    print(f'Number of test examples: {len(test_indices)} (slices {test_indices[0]} to {test_indices[-1]})')
 
     model = load_empty_model(args.architecture, dataset.n_classes)
     model = model.to(device)
@@ -140,7 +146,7 @@ def run(args: ArgumentParser) -> list:
     # Loading previously stored weights
     model.load_state_dict(torch.load(args.model_path))
 
-    all_outputs = []
+    results = {}
 
     with torch.no_grad():
         model.eval()
@@ -149,12 +155,15 @@ def run(args: ArgumentParser) -> list:
         print(datetime.now().strftime('\n%Y/%m/%d %H:%M:%S'))
         print('Testing the model...\n')
 
-        for images, labels in tqdm(test_loader, ascii=' >='):
+        for slice_idx, (images, labels) in enumerate(tqdm(test_loader, ascii=' >=')):
             images = images.type(torch.FloatTensor).to(device)
             labels = labels.type(torch.FloatTensor).to(device)
 
             outputs = model(images)
-            all_outputs.append(outputs)
+
+            # Iterating over the batch
+            for pred, label in zip(outputs, labels):
+                results[slice_idx] = (pred, label)
 
             # Computing the loss
             loss = criterion(images=outputs, targets=labels.long())
@@ -164,7 +173,7 @@ def run(args: ArgumentParser) -> list:
 
         print(f'Test loss: {test_loss}')
     
-    return all_outputs
+    return results
 
 
 if __name__ == '__main__':
@@ -218,16 +227,12 @@ if __name__ == '__main__':
         help='Whether the model should be trained using inlines or crosslines',
         choices=['in', 'cross']
     )
-    parser.add_argument('-i', '--first-slice',
-        dest='first_slice',
+    parser.add_argument('-n', '--fold-number',
+        dest='fold_number',
         type=int,
-        default=0,
-        help='Index of the first slice from the test set'
-    )
-    parser.add_argument('-j', '--last-slice',
-        dest='last_slice',
-        type=int,
-        help='Index of the last slice from the test set'
+        default=1,
+        help='Fold number (from 1 to 5) of the data used for testing during training',
+        choices=[1, 2, 3, 4, 5]
     )
     parser.add_argument('-s', '--store-outputs',
         dest='store_outputs',
@@ -246,4 +251,4 @@ if __name__ == '__main__':
     outputs = run(args)
 
     if args.store_outputs:
-        store_outputs(args, outputs)
+        save_images(args, outputs)
