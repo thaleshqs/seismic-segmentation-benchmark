@@ -154,8 +154,10 @@ def run(args: ArgumentParser) -> dict:
 
         print(datetime.now().strftime('\n%Y/%m/%d %H:%M:%S'))
         print('Testing the model...\n')
+        
+        slice_idx = test_indices[0]
 
-        for slice_idx, (images, labels) in enumerate(tqdm(test_loader, ascii=' >=')):
+        for images, labels in tqdm(test_loader, ascii=' >='):
             images = images.type(torch.FloatTensor).to(device)
             labels = labels.type(torch.FloatTensor).to(device)
 
@@ -164,6 +166,7 @@ def run(args: ArgumentParser) -> dict:
             # Iterating over the batch
             for pred, label in zip(outputs, labels):
                 results[slice_idx] = (pred, label)
+                slice_idx += 1
 
             # Computing the loss
             loss = criterion(images=outputs, targets=labels.long())
