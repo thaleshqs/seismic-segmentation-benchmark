@@ -52,13 +52,6 @@ def store_results(args: ArgumentParser, results: dict) -> None:
     with open(os.path.join(results_folder, f'metadata.json'), 'w') as json_buffer:
         json.dump(vars(args), json_buffer, indent=4)
     
-#     with open(os.path.join(results_folder, 'metadata.json'), 'w') as json_buffer:
-#         d = vars(args)
-#         d = {'test_ratio' if key == 'few_shot' else key: value for key, value in d.items()}
-#         d['test_ratio'] = 0.8
-        
-#         json.dump(d, json_buffer, indent=4)
-
     for fold_number in sorted(results.keys()):
         suffix = f'_fold_{fold_number + 1}' if args.cross_validation else ''
 
@@ -76,14 +69,9 @@ def store_results(args: ArgumentParser, results: dict) -> None:
 
 
 def run(args: ArgumentParser) -> dict:
-    if args.data_path.endswith('/'):
-        args.data_path = args.data_path[:-1]
-
-    if not os.path.isdir(args.data_path):
-        raise FileNotFoundError(f'Folder {args.data_path} does not exist.')
-    
     print('')
     print('Data path:    ', args.data_path)
+    print('Labels path:  ', args.labels_path)
     print('Results path: ', args.results_path)
     print('')
 
@@ -94,8 +82,10 @@ def run(args: ArgumentParser) -> dict:
 
     dataset = SeismicDataset(
         data_path=args.data_path,
+        labels_path=args.labels_path,
         orientation=args.orientation,
-        compute_weights=args.weighted_loss
+        compute_weights=args.weighted_loss,
+        faulty_slices_list=args.faulty_slices_list
     )
 
     if args.weighted_loss:
@@ -262,10 +252,15 @@ if __name__ == '__main__':
         help='Architecture to use [segnet, unet, deconvnet]',
         choices=['segnet', 'unet', 'deconvnet']
     )
-    parser.add_argument('-p', '--data-path',
+    parser.add_argument('-d', '--data-path',
         dest='data_path',
         type=str,
-        help='Path to the folder containing the dataset and its labels in .npy format'
+        help='Path to the data file in numpy or segy format'
+    )
+    parser.add_argument('-l', '--labels-path',
+        dest='labels_path',
+        type=str,
+        help='Path to the labels file in numpy format'
     )
     parser.add_argument('-b', '--batch-size',
         dest='batch_size',
@@ -273,7 +268,7 @@ if __name__ == '__main__':
         default=16,
         help='Batch Size'
     )
-    parser.add_argument('-d', '--device',
+    parser.add_argument('-D', '--device',
         dest='device',
         type=str,
         default='cuda:0',
@@ -299,7 +294,7 @@ if __name__ == '__main__':
         help='Optimizer to use [adam, sgd (Stochastic Gradient Descent)]',
         choices=['adam', 'sgd']
     )
-    parser.add_argument('-l', '--learning-rate',
+    parser.add_argument('-r', '--learning-rate',
         dest='learning_rate',
         type=float,
         default=1e-4,
@@ -330,11 +325,11 @@ if __name__ == '__main__':
         help='Whether the model should be trained using inlines or crosslines',
         choices=['in', 'cross']
     )
-    parser.add_argument('-f', '--remove-faulty-slices',
-        dest='remove_faulty_slices',
-        action='store_true',
-        default=True,
-        help='Whether to remove slices with artifacts'
+    parser.add_argument('-f', '--faulty-slices-list',
+        dest='faulty_slices_list',
+        type=str,
+        default=None,
+        help='Path to a json file containing a list of faulty slices to remove'
     )
     parser.add_argument('-F', '--few-shot',
         dest='few_shot',
@@ -345,10 +340,10 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--store-results',
         dest='store_results',
         action='store_true',
-        default=True,
+        default=False,
         help='Whether to store the model weights and metrics'
     )
-    parser.add_argument('-r', '--results-path',
+    parser.add_argument('-p', '--results-path',
         dest='results_path',
         type=str,
         default=os.path.join(os.getcwd(), 'results'),

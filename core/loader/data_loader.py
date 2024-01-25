@@ -1,4 +1,5 @@
 import numpy as np
+import segyio
 import os
 import json
 from torch.utils.data import Dataset
@@ -6,21 +7,17 @@ from torch.utils.data import Dataset
 
 class SeismicDataset(Dataset):
 
-    def __init__(self, data_path, orientation, compute_weights=False, remove_faulty_slices=True):
-        self.data_path = data_path
-        self.dataset_name = os.path.basename(self.data_path)
-        self.faulty_slices_path = os.path.join(self.data_path, 'faulty_slices.json')
+    def __init__(self, data_path, labels_path, orientation, compute_weights=False, faulty_slices_list=None):
+        self.data, self.labels = self.__load_data(data_path, labels_path)
+        self.orientation = orientation
 
-        self.data = np.load(os.path.join(self.data_path, f'{self.dataset_name}_dataset.npy'))
-        self.labels = np.load(os.path.join(self.data_path, f'{self.dataset_name}_labels.npy'))
-
-        if remove_faulty_slices:
-            self.__remove_faulty_slices()
+        # Removing faulty slices from the data if specified
+        if faulty_slices_list is not None:
+            self.__remove_faulty_slices(faulty_slices_list)
+        
+        self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
         
         self.n_classes = self.__process_class_labels()
-
-        self.orientation = orientation
-        self.n_inlines, self.n_crosslines, self.n_time_slices = self.data.shape
         self.weights = self.__compute_class_weights() if compute_weights else None
 
 
@@ -33,8 +30,8 @@ class SeismicDataset(Dataset):
             label = self.labels[:, index, :]
         
         # Reshaping to 3D image
-        image = image.reshape(1, image.shape[0], image.shape[1])
-        label = label.reshape(1, label.shape[0], label.shape[1])
+        image = np.expand_dims(image, axis=0)
+        label = np.expand_dims(label, axis=0)
 
         return image, label
 
@@ -42,6 +39,35 @@ class SeismicDataset(Dataset):
     def __len__(self):
         return self.n_inlines if self.orientation == 'in' else self.n_crosslines
     
+    
+    def __load_data(self, data_path, labels_path):
+        if not os.path.isfile(data_path):
+            raise FileNotFoundError(f'File {data_path} does not exist.')
+        
+        if not os.path.isfile(labels_path):
+            raise FileNotFoundError(f'File {labels_path} does not exist.')
+        
+        _, data_extension = os.path.splitext(data_path)
+        
+        # Loading data
+        if data_extension in ['.segy', '.sgy']:
+            inlines = []
+        
+            with segyio.open(data_path, 'r') as segyfile:
+                segyfile.mmap()
+
+                for inline in segyfile.ilines:
+                    inlines.append(segyfile.iline[inline])
+
+            data = np.array(inlines)
+        else:
+            data = np.load(data_path)
+
+        # Loading labels
+        labels = np.load(labels_path)
+        
+        return data, labels
+
 
     def __compute_class_weights(self):
         total_n_values = self.n_inlines * self.n_crosslines * self.n_time_slices
@@ -51,9 +77,9 @@ class SeismicDataset(Dataset):
         return total_n_values / (counts*self.n_classes)
     
 
-    def __remove_faulty_slices(self):
+    def __remove_faulty_slices(self, faulty_slices_list):
         try:
-            with open(self.faulty_slices_path, 'r') as json_buffer:
+            with open(faulty_slices_list, 'r') as json_buffer:
                 # File containing the list of slices to delete
                 faulty_slices = json.loads(json_buffer.read())
 
@@ -66,7 +92,7 @@ class SeismicDataset(Dataset):
                 self.labels = np.delete(self.labels, obj=faulty_slices['time_slices'], axis=2)
 
         except FileNotFoundError:
-            print('"Remove faulty slices" is on, but no file with the indices was found.')
+            print('Could not open the .json file containing the faulty slices.')
             print('Training with the whole volume instead.\n')
 
             pass

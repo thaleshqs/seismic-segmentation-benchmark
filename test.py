@@ -14,13 +14,13 @@ from core.loader.data_loader import *
 from core.models import load_empty_model
 
 
-def train_test_split(args: ArgumentParser, dataset: SeismicDataset) -> list:
+def train_test_split(dataset: SeismicDataset) -> list:
     kf = KFold(n_splits=5, shuffle=False)
     
     return [(train_idx.tolist(), test_idx.tolist()) for train_idx, test_idx in kf.split(dataset)]
 
 
-def tensor_to_image(output: torch.tensor) -> Image:
+def tensor_to_image(output: torch.tensor, is_label=False) -> Image:
     # Viridis color palette
     color_map = np.array([
         (253, 231, 37),
@@ -34,11 +34,13 @@ def tensor_to_image(output: torch.tensor) -> Image:
         (72, 40, 120),
         (68, 1, 84)
     ], dtype=np.uint8)
+    
+    _, height, width = output.shape
 
-    n_channels, height, width = output.shape
-
-    if n_channels < 3:
+    # For the case that it is an image
+    if is_label:
         output = output.numpy().astype(np.uint8)
+    # For the case that it is a prediction
     else:
         # Finding the class with the highest probability for each pixel
         output = np.argmax(output, axis=0)
@@ -72,7 +74,7 @@ def save_images(args: ArgumentParser, outputs: list) -> None:
 
     for idx, (pred, label) in outputs.items():
         pred = tensor_to_image(pred.cpu())
-        label = tensor_to_image(label.cpu())
+        label = tensor_to_image(label.cpu(), is_label=True)
 
         pred.save(os.path.join(results_folder, f'preds/pred_{idx}.png'))
         label.save(os.path.join(results_folder, f'labels/label_{idx}.png'))
@@ -80,18 +82,10 @@ def save_images(args: ArgumentParser, outputs: list) -> None:
     print(f'\nModel outputs saved as images in {results_folder}')
 
 
-def run(args: ArgumentParser) -> dict:
-    if args.data_path.endswith('/'):
-        args.data_path = args.data_path[:-1]
-    
-    if not os.path.isdir(args.data_path):
-        raise FileNotFoundError(f'Folder {args.data_path} does not exist.')
-
-    if not os.path.isfile(args.model_path):
-        raise FileNotFoundError(f'No such file or directory for stored model: {args.model_path}')
-    
+def run(args: ArgumentParser) -> dict:    
     print('')
     print('Data path:        ', args.data_path)
+    print('Labels path:      ', args.labels_path)
     print('Stored model path:', args.model_path)
     print('')
 
@@ -102,8 +96,10 @@ def run(args: ArgumentParser) -> dict:
 
     dataset = SeismicDataset(
         data_path=args.data_path,
+        labels_path=args.labels_path,
         orientation=args.orientation,
-        compute_weights=args.weighted_loss
+        compute_weights=args.weighted_loss,
+        faulty_slices_list=args.faulty_slices_list
     )
 
     if args.weighted_loss:
@@ -123,7 +119,7 @@ def run(args: ArgumentParser) -> dict:
     print(f'Testing with {"INLINES" if args.orientation == "in" else "CROSSLINES"}')
 
     # Retrieving only a subset of slices for testing
-    _, test_indices = train_test_split(args, dataset)[args.fold_number - 1]
+    _, test_indices = train_test_split(dataset)[args.fold_number - 1]
 
     test_loader = torch.utils.data.DataLoader(
         dataset=dataset,
@@ -144,6 +140,9 @@ def run(args: ArgumentParser) -> dict:
     model = model.to(device)
 
     # Loading previously stored weights
+    if not os.path.isfile(args.model_path):
+        raise FileNotFoundError(f'No such file or directory for stored model: {args.model_path}')
+    
     model.load_state_dict(torch.load(args.model_path))
 
     results = {}
@@ -160,6 +159,8 @@ def run(args: ArgumentParser) -> dict:
         for images, labels in tqdm(test_loader, ascii=' >='):
             images = images.type(torch.FloatTensor).to(device)
             labels = labels.type(torch.FloatTensor).to(device)
+            
+            print(torch.max(labels))
 
             outputs = model(images)
 
@@ -193,10 +194,15 @@ if __name__ == '__main__':
         help='Architecture to use [segnet, unet, deconvnet]',
         choices=['segnet', 'unet', 'deconvnet']
     )
-    parser.add_argument('-p', '--data-path',
+    parser.add_argument('-d', '--data-path',
         dest='data_path',
         type=str,
-        help='Path to the folder containing the dataset and its labels in .npy format'
+        help='Path to the data file in numpy or segy format'
+    )
+    parser.add_argument('-l', '--labels-path',
+        dest='labels_path',
+        type=str,
+        help='Path to the labels file in numpy format'
     )
     parser.add_argument('-b', '--batch-size',
         dest='batch_size',
@@ -204,7 +210,7 @@ if __name__ == '__main__':
         default=16,
         help='Batch Size'
     )
-    parser.add_argument('-d', '--device',
+    parser.add_argument('-D', '--device',
         dest='device',
         type=str,
         default='cuda:0',
@@ -237,13 +243,19 @@ if __name__ == '__main__':
         help='Fold number (from 1 to 5) of the data used for testing during training',
         choices=[1, 2, 3, 4, 5]
     )
+    parser.add_argument('-f', '--faulty-slices-list',
+        dest='faulty_slices_list',
+        type=str,
+        default=None,
+        help='Path to a json file containing a list of faulty slices to remove'
+    )
     parser.add_argument('-s', '--store-outputs',
         dest='store_outputs',
         action='store_true',
         default=False,
         help='Whether to store the model outputs as images'
     )
-    parser.add_argument('-r', '--outputs-path',
+    parser.add_argument('-p', '--outputs-path',
         dest='outputs_path',
         type=str,
         default=os.path.join(os.getcwd(), 'outputs'),
