@@ -40,7 +40,7 @@ def train_test_split(args, dataset):
     return splits
 
 
-def train(args, dataset, device, criterion, indices):
+def train(args, dataset, device, criterion, n_classes, indices):
     print('\nCreating model...')
     print('Architecture:   ', args.architecture.upper())
     print('Optimizer:      ', args.optimizer)
@@ -58,10 +58,10 @@ def train(args, dataset, device, criterion, indices):
     train_loader = torch.utils.data.DataLoader(
         dataset=dataset,
         batch_size=args.batch_size,
-        sampler=torch.utils.data.SubsetRandomSampler(indices),
+        shuffle=True
     )
 
-    model = load_empty_model(args.architecture, dataset.get_n_classes())
+    model = load_empty_model(args.architecture, n_classes)
     model = model.to(device)
 
     # Defining the optimizer
@@ -78,7 +78,7 @@ def train(args, dataset, device, criterion, indices):
     )
 
     # Initializing metrics
-    train_metrics = RunningMetrics(n_classes=dataset.get_n_classes(), bf1_threshold=2)
+    train_metrics = RunningMetrics(n_classes=n_classes, bf1_threshold=2)
 
     # Storing the loss for each epoch
     train_loss_list = []
@@ -126,7 +126,7 @@ def train(args, dataset, device, criterion, indices):
     return model, results
 
 
-def test(args, dataset, device, criterion, indices, model=None):
+def test(args, dataset, device, criterion, n_classes, indices, fold, model=None):
     print('\nTesting model...')
     print('Architecture:   ', args.architecture.upper())
     print('Device:         ', device)
@@ -137,15 +137,15 @@ def test(args, dataset, device, criterion, indices, model=None):
 
     print('\nWeighted loss ENABLED' if args.weighted_loss else 'Weighted loss DISABLED')
     print(f'Testing with {"INLINES" if args.orientation == "in" else "CROSSLINES"}')
-
+    
     test_loader = torch.utils.data.DataLoader(
         dataset=dataset,
         batch_size=args.batch_size,
-        sampler=torch.utils.data.SequentialSampler(indices),
+        shuffle=False
     )
 
     # Initializing metrics
-    test_metrics  = RunningMetrics(n_classes=dataset.get_n_classes(), bf1_threshold=2)
+    test_metrics  = RunningMetrics(n_classes=n_classes, bf1_threshold=2)
 
     # Storing the loss for each epoch
     test_loss_list  = []
@@ -153,8 +153,10 @@ def test(args, dataset, device, criterion, indices, model=None):
     if model is None:
         print(f'\nTraining is OFF. Loading stored model from {args.model_path}')
 
-        model = load_empty_model(args.architecture, dataset.n_classes)
+        model = load_empty_model(args.architecture, n_classes)
         model = model.to(device)
+        
+        # model_path = os.path.join(args.model_path, f'model_fold_{fold}.pt')
 
         if not os.path.isfile(args.model_path):
             raise FileNotFoundError(f'No such file or directory for stored model: {args.model_path}')
@@ -250,14 +252,18 @@ def run(args):
         if args.cross_validation:
             print(f'\n======== FOLD {fold_number + 1}/5 ========')
         
-        train_indices, test_indices = splits[fold_number-1]
+        train_indices, test_indices = splits[fold_number]
+        
+        train_set = torch.utils.data.Subset(dataset, train_indices)
+        test_set = torch.utils.data.Subset(dataset, test_indices)
 
         if args.train:
             model, train_results = train(
                 args,
-                dataset,
+                train_set,
                 device=device,
                 criterion=criterion,
+                n_classes=dataset.get_n_classes(),
                 indices=train_indices
             )
         else:
@@ -267,10 +273,12 @@ def run(args):
 
         preds, test_results = test(
             args,
-            dataset,
+            test_set,
             device=device,
             criterion=criterion,
+            n_classes=dataset.get_n_classes(),
             indices=test_indices,
+            fold=fold_number,
             model=model
         )
 
@@ -283,7 +291,7 @@ def run(args):
             **test_results
         })
 
-    store_results(args, results)
+    store_results(args, results, n_classes=dataset.get_n_classes())
 
 
 if __name__ == '__main__':
@@ -389,6 +397,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--model-path',
         dest='model_path',
         type=str,
+        default=None,
         help='Directory for loading saved model'
     )
     parser.add_argument('-p', '--results-path',

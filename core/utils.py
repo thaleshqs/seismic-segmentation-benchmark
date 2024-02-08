@@ -7,7 +7,7 @@ from PIL import Image
 
 
 def tensor_to_image(output, color_palette='viridis'):
-    # Viridis color palette
+    # Defining color palettes
     color_map = {
         'viridis': np.array([
             (253, 231, 37),
@@ -43,15 +43,13 @@ def tensor_to_image(output, color_palette='viridis'):
     return image
 
 
-def save_images(preds, preds_path):
-    print('\nGenerating images from predictions...')
-
+def save_images(preds, preds_path, color_palette):    
     for idx, pred in preds.items():
-        pred = tensor_to_image(pred.cpu())
+        pred = tensor_to_image(pred.cpu(), color_palette=color_palette)
         pred.save(os.path.join(preds_path, f'pred_{idx}.png'))
 
 
-def store_results(args, results):
+def store_results(args, results, n_classes):
     # Creating the results folder if it does not exist
     if not os.path.exists(args.results_path):
         os.makedirs(args.results_path)
@@ -83,6 +81,7 @@ def store_results(args, results):
             json.dump(scores, json_buffer, indent=4)
         
         # Storing model outputs as images
-        save_images(results[fold_number]['preds'], images_folder)
+        color_palette = 'binary' if n_classes == 2 else 'viridis'
+        save_images(results[fold_number]['preds'], images_folder, color_palette)
     
     print(f'\nResults saved in {args.results_path}')
