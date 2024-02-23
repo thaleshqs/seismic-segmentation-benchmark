@@ -7,7 +7,6 @@ Our goal is to propose a benchmark method for comparing the results of different
 ## Instaling the Required Packages
 
 The code was tested using Python 3.10. To install all the depedencies required, execute the following command within the main project folder:
-
 ```
 pip install -r requirements.txt
 ```
