@@ -1,0 +1,21 @@
+website:
+  sidebar:
+    contents:
+      - segment_seismic.ipynb
+      - section: libs
+        contents:
+          - libs/metrics.ipynb
+          - libs/utils.ipynb
+          - section: loader
+            contents:
+              - libs/loader/data_loader.ipynb
+          - section: loss
+            contents:
+              - libs/loss/cross_entropy.ipynb
+          - section: models
+            contents:
+              - libs/models/Untitled.ipynb
+              - libs/models/deconvnet.ipynb
+              - libs/models/load_empty_model.ipynb
+              - libs/models/segnet.ipynb
+              - libs/models/unet.ipynb

@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "segmentation-benchmark"
+  site-url: "https://gabriel-cangucu.github.io/segmentation-benchmark"
+  description: "Benchmark - Nbdev"
+  repo-branch: main
+  repo-url: "https://github.com/gabriel-cangucu/segmentation-benchmark"
